@@ -1,53 +1,17 @@
 from flask import Flask, request, jsonify
-import pyaudio
-import wave
 import speech_recognition as sr
 import requests
 import os
 import threading
 from flask_cors import CORS
 from dotenv import load_dotenv
-import os
 
 load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
 CORS(app, resources={r"/start_recording": {"origins": "*"}, r"/stop_recording": {"origins": "*"}})
 
-api_key = os.getenv("DEEPSEEK_API_KEY", "sk-dc7c41ed769b4d0f9757b9b6b82158d7")
-
-# Audio recording setup
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 44100
-
-p = pyaudio.PyAudio()
-recording_streams = {}  # Store streams for each session
-
-def record_audio_continuously(session_id, stop_event, filename="session.wav"):
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
-    frames = []
-    recording_streams[session_id] = stream
-    
-    try:
-        while not stop_event.is_set():
-            data = stream.read(CHUNK)
-            frames.append(data)
-    except Exception as e:
-        print(f"Recording error: {e}")
-    finally:
-        stream.stop_stream()
-        stream.close()
-    
-    wf = wave.open(filename, 'wb')
-    wf.setnchannels(CHANNELS)
-    wf.setsampwidth(p.get_sample_size(FORMAT))
-    wf.setframerate(RATE)
-    wf.writeframes(b''.join(frames))
-    wf.close()
-    del recording_streams[session_id]
-    return filename
+recording_sessions = {}  # Store session data for continuous recording
 
 def transcribe_audio(audio_file, language):
     recognizer = sr.Recognizer()
@@ -92,49 +56,33 @@ def generate_physio_notes(transcription, api_key):
 def start_recording():
     language = request.form.get('language', 'en-US')
     session_id = request.form.get('session_id', 'default_session')
-    stop_event = threading.Event()
-    
-    # Start recording in a separate thread
-    t = threading.Thread(target=record_audio_continuously, args=(session_id, stop_event, f"session_{session_id}.wav"))
-    t.daemon = True
-    t.start()
-    
+    recording_sessions[session_id] = {'language': language, 'chunks': []}
     return jsonify({"message": "Recording started", "session_id": session_id})
 
 @app.route('/stop_recording', methods=['POST'])
 def stop_recording():
     session_id = request.form.get('session_id', 'default_session')
-    if session_id in recording_streams:
-        stop_event = threading.Event()
-        stop_event.set()  # Signal to stop recording
-        filename = f"session_{session_id}.wav"
-        
-        # Wait briefly for the recording thread to finish
-        time.sleep(1)  # Adjust if needed
-        
-        # Transcribe and generate notes
-        language = request.form.get('language', 'en-US')
-        api_key = "sk-dc7c41ed769b4d0f9757b9b6b82158d7"  # Replace with your actual DeepSeek API key
-        
-        transcription = transcribe_audio(filename, language)
-        notes = generate_physio_notes(transcription, api_key)
-        
-        os.remove(filename)  # Clean up the audio file
-        return jsonify({"transcription": transcription, "notes": notes})
+    if session_id in recording_sessions:
+        audio_file = request.files['audio']
+        if audio_file:
+            # Save the audio blob temporarily
+            filename = f"session_{session_id}.wav"
+            audio_file.save(filename)
+            
+            # Transcribe the audio
+            language = recording_sessions[session_id]['language']
+            transcription = transcribe_audio(filename, language)
+            
+            # Generate notes
+            api_key = os.getenv("DEEPSEEK_API_KEY", "sk-dc7c41ed769b4d0f9757b9b6b82158d7")
+            notes = generate_physio_notes(transcription, api_key)
+            
+            # Clean up
+            os.remove(filename)
+            del recording_sessions[session_id]
+            return jsonify({"transcription": transcription, "notes": notes})
+        return jsonify({"error": "No audio file provided"}), 400
     return jsonify({"error": "No active recording for this session"}), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
-
-# Cleanup on exit
-def cleanup():
-    global p
-    for stream in recording_streams.values():
-        if stream.is_active():
-            stream.stop_stream()
-            stream.close()
-    p.terminate()
-
-import atexit
-import time
-atexit.register(cleanup)
