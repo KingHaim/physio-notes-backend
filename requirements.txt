@@ -37,7 +37,6 @@ orjson==3.10.15
 packaging==24.2
 pandas==2.2.3
 pillow==10.4.0
-PyAudio==0.2.14
 pydantic==2.10.6
 pydantic_core==2.27.2
 pydub==0.25.1
