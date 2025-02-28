@@ -14,6 +14,8 @@ load_dotenv()  # Load environment variables from .env
 app = Flask(__name__)
 CORS(app, resources={r"/start_recording": {"origins": "*"}, r"/stop_recording": {"origins": "*"}})
 
+api_key = os.getenv("DEEPSEEK_API_KEY", "sk-dc7c41ed769b4d0f9757b9b6b82158d7")
+
 # Audio recording setup
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
