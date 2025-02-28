@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
-CORS(app, resources={r"/start_recording": {"origins": "*"}, r"/stop_recording": {"origins": "*"}})
+CORS(app, resources={r"/start_recording": {"origins": "https://physio-notes-frontend.onrender.com"}, r"/stop_recording": {"origins": "https://physio-notes-frontend.onrender.com"}})
 
 recording_sessions = {}  # Store session data for continuous recording
 
