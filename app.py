@@ -9,7 +9,13 @@ from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
-CORS(app, resources={r"/start_recording": {"origins": "https://physio-notes-frontend.onrender.com"}, r"/stop_recording": {"origins": "https://physio-notes-frontend.onrender.com"}})
+# Allow requests from both Render and Vercel frontend domains
+CORS(app, resources={
+    r"/start_recording": {"origins": ["https://physio-notes-frontend.onrender.com", "https://physio-notes-app.vercel.app"]},
+    r"/stop_recording": {"origins": ["https://physio-notes-frontend.onrender.com", "https://physio-notes-app.vercel.app"]},
+    r"/transcribe": {"origins": ["https://physio-notes-frontend.onrender.com", "https://physio-notes-app.vercel.app"]},
+    r"/generate_notes": {"origins": ["https://physio-notes-frontend.onrender.com", "https://physio-notes-app.vercel.app"]}
+})
 
 recording_sessions = {}  # Store session data for continuous recording
 
