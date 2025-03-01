@@ -86,7 +86,7 @@ def stop_recording():
             # Clean up
             os.remove(filename)
             del recording_sessions[session_id]
-            return jsonify({"transcription": transcription, "notes": notes})
+            return jsonify({"transcription": transcription, "notes": notes, "audio_url": f"https://example.com/audio_{session_id}.wav"})
         return jsonify({"error": "No audio file provided"}), 400
     return jsonify({"error": "No active recording for this session"}), 400
 

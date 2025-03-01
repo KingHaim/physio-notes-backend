@@ -1,0 +1,5 @@
+node_modules/  # Ignore Node.js dependencies
+dist/  # Ignore build output (if using Vite's default build dir)
+build/  # Ignore build output (if you used `npm run build`)
+*.log  # Ignore log files
+.env  # Ignore environment variables (if any)
